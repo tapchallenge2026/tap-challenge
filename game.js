@@ -1,208 +1,189 @@
-const tg = window.Telegram.WebApp;
-tg.ready();
-tg.expand();
+// ============================
+// Tap Challenge Game - Main Script
+// ============================
 
-// game.js — Tap Challenge (20s)
-
-// --- Game state ---
-let score = 0;
-let timeLeft = 20;
-let gameActive = false;
-let timerInterval = null;
-
-// --- DOM references ---
-const scoreDisplay = document.getElementById('scoreDisplay');
-const bestDisplay = document.getElementById('bestDisplay');
-const timerDisplay = document.getElementById('timerDisplay');
-const tapButton = document.getElementById('tapButton');
-const startButton = document.getElementById('startButton');
-const playAgainButton = document.getElementById('playAgainButton');
-const timerRing = document.querySelector('.timer-ring');
-const telegramUser = tg.initDataUnsafe?.user;
-
-// --- Best score from localStorage ---
-let bestScore = 0;
-try {
-  const stored = localStorage.getItem('tapChallengeBest');
-  if (stored !== null) {
-    bestScore = Number(stored) || 0;
-  }
-} catch (e) {
-  // localStorage might be blocked (private mode / Telegram)
-  console.warn('localStorage unavailable, best score not saved.');
+const tg = window.Telegram?.WebApp;
+if (tg) {
+    tg.ready();
+    tg.expand();
 }
-bestDisplay.textContent = bestScore;
 
-// --- Helper: update best score (and save) ---
-function updateBestScore() {
-  if (score > bestScore) {
-    bestScore = score;
-    bestDisplay.textContent = bestScore;
-    try {
-      localStorage.setItem('tapChallengeBest', bestScore);
-    } catch (e) {
-      // ignore if storage fails
+// ===== Game State =====
+const GAME_STATE = {
+    balance: 0,
+    energy: 1000,
+    maxEnergy: 1000,
+    tapValue: 1,
+    userId: null,
+    userName: 'Player'
+};
+
+// Load from localStorage
+function loadState() {
+    const saved = localStorage.getItem('tapGameState');
+    if (saved) {
+        const parsed = JSON.parse(saved);
+        Object.assign(GAME_STATE, parsed);
     }
-  }
 }
 
-// --- Update timer display + warning color ---
-function updateTimerUI() {
-  timerDisplay.textContent = timeLeft;
-  if (timeLeft <= 5) {
-    timerRing.classList.add('warning');
-  } else {
-    timerRing.classList.remove('warning');
-  }
+// Save state
+function saveState() {
+    localStorage.setItem('tapGameState', JSON.stringify({
+        balance: GAME_STATE.balance,
+        energy: GAME_STATE.energy,
+        maxEnergy: GAME_STATE.maxEnergy,
+        tapValue: GAME_STATE.tapValue
+    }));
 }
 
-// --- Stop timer and clean up ---
-function stopTimer() {
-  if (timerInterval) {
-    clearInterval(timerInterval);
-    timerInterval = null;
-  }
+// ===== User Init =====
+function initUser() {
+    if (tg && tg.initDataUnsafe?.user) {
+        const user = tg.initDataUnsafe.user;
+        GAME_STATE.userId = user.id;
+        GAME_STATE.userName = user.first_name || 'Player';
+
+        document.getElementById('userName').textContent = GAME_STATE.userName;
+        if (user.photo_url) {
+            document.getElementById('userPhoto').src = user.photo_url;
+        }
+    }
 }
 
-// --- End game (timeout or manual) ---
-function endGame() {
-  gameActive = false;
-  stopTimer();
-  tapButton.disabled = true;
-  timerRing.classList.remove('warning');
-  updateBestScore();
-  
-  // Show Play Again, hide Start (they might both be visible but start is hidden style)
-  startButton.classList.add('hidden');
-  playAgainButton.classList.remove('hidden');
-}
-
-// --- Reset for new round (called by start/play again) ---
-function resetGame() {
-  stopTimer();
-  gameActive = false;
-  score = 0;
-  timeLeft = 20;
-  scoreDisplay.textContent = '0';
-  timerDisplay.textContent = '20';
-  timerRing.classList.remove('warning');
-  tapButton.disabled = true;   // disabled until user starts? we'll enable on start
-  // But we want tap disabled until game starts, so we manage in startGame.
-  // Button state will be enabled inside startGame.
-  
-  // Buttons: hide play again, show start
-  playAgainButton.classList.add('hidden');
-  startButton.classList.remove('hidden');
-  
-  // Also reset any residual UI
-  updateTimerUI();
-}
-
-// --- Start the game (from button) ---
-function startGame() {
-  // prevent double start
-  if (gameActive) return;
-  
-  // reset everything and set active
-  resetGame();              // resets score/time, disables tap, hides again button
-  gameActive = true;
-  tapButton.disabled = false;   // enable TAP
-  score = 0;
-  timeLeft = 20;
-  scoreDisplay.textContent = '0';
-  updateTimerUI();
-  
-  // Ensure buttons state: start hidden, play again hidden (or not needed)
-  startButton.classList.add('hidden');
-  playAgainButton.classList.add('hidden');
-  
-  // Start countdown
-  timerInterval = setInterval(() => {
-    timeLeft -= 1;
-    updateTimerUI();
+// ===== UI Updates =====
+function updateUI() {
+    document.getElementById('balance').textContent = formatNumber(GAME_STATE.balance);
+    document.getElementById('energyText').textContent = 
+        `${Math.floor(GAME_STATE.energy)}/${GAME_STATE.maxEnergy}`;
     
-    if (timeLeft <= 0) {
-      timeLeft = 0;
-      updateTimerUI();
-      endGame();
+    const energyPercent = (GAME_STATE.energy / GAME_STATE.maxEnergy) * 100;
+    document.getElementById('energyFill').style.width = `${energyPercent}%`;
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
+    return Math.floor(num).toString();
+}
+
+// ===== Tap Handler =====
+const tapCoin = document.getElementById('tapCoin');
+const tapPoints = document.getElementById('tapPoints');
+
+let tapCooldown = false;
+
+function handleTap(e) {
+    if (GAME_STATE.energy < GAME_STATE.tapValue) {
+        showEnergyWarning();
+        return;
     }
-  }, 1000);
+
+    // Haptic feedback
+    if (tg?.HapticFeedback) {
+        tg.HapticFeedback.impactOccurred('light');
+    }
+
+    GAME_STATE.balance += GAME_STATE.tapValue;
+    GAME_STATE.energy -= GAME_STATE.tapValue;
+
+    updateUI();
+    showFloatingPoints(e);
+    saveState();
 }
 
-// --- Tap handler ---
-function handleTap() {
-  if (!gameActive) return;        // ignore taps when not active
-  if (timeLeft <= 0) return;      // extra safety
-  
-  score += 1;
-  scoreDisplay.textContent = score;
-  
-  // small haptic feedback if supported
-  if (navigator.vibrate) navigator.vibrate(15);
-  
-  // visual feedback on button (CSS handles :active but we can do a quick scale)
-  tapButton.style.transform = 'scale(0.96)';
-  setTimeout(() => {
-    tapButton.style.transform = '';
-  }, 60);
+function showFloatingPoints(e) {
+    const rect = tapCoin.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const point = document.createElement('div');
+    point.className = 'tap-points show';
+    point.textContent = `+${GAME_STATE.tapValue}`;
+    point.style.left = x + 'px';
+    point.style.top = y + 'px';
+    
+    tapCoin.parentElement.appendChild(point);
+    
+    setTimeout(() => point.remove(), 800);
 }
 
-// --- Attach event listeners ---
+function showEnergyWarning() {
+    if (tg?.showAlert) {
+        tg.showAlert('⚡ Energy illa! Wait pannunga, regenerate aagum.');
+    } else {
+        alert('⚡ Energy illa!');
+    }
+}
 
-// TAP button – use 'click' for modern mobile browsers (faster than touch)
-tapButton.addEventListener('click', (e) => {
-  e.preventDefault();
-  handleTap();
-});
-
-// Also handle touchstart for extra responsiveness (optional, avoids 300ms delay)
-tapButton.addEventListener('touchstart', (e) => {
-  e.preventDefault();   // prevent double firing
-  handleTap();
+// ===== Multi-touch Support =====
+tapCoin.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    for (let i = 0; i < e.touches.length; i++) {
+        handleTap(e.touches[i]);
+    }
 }, { passive: false });
 
-// START button
-startButton.addEventListener('click', (e) => {
-  e.preventDefault();
-  startGame();
+tapCoin.addEventListener('click', (e) => {
+    handleTap(e);
 });
 
-// PLAY AGAIN button
-playAgainButton.addEventListener('click', (e) => {
-  e.preventDefault();
-  startGame();   // startGame already calls resetGame
+// ===== Energy Regeneration =====
+setInterval(() => {
+    if (GAME_STATE.energy < GAME_STATE.maxEnergy) {
+        GAME_STATE.energy = Math.min(
+            GAME_STATE.energy + 5,
+            GAME_STATE.maxEnergy
+        );
+        updateUI();
+    }
+}, 1000); // +5 energy per second
+
+// ===== Bottom Nav =====
+document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const tab = btn.dataset.tab;
+        // Ippo just alert - neenga pages add pannalam
+        if (tab !== 'home') {
+            if (tg?.showAlert) tg.showAlert(`${tab} page coming soon!`);
+        }
+    });
 });
 
-// --- Initialization on page load ---
-(function init() {
-  // Make sure everything is in a clean state
-  gameActive = false;
-  stopTimer();
-  score = 0;
-  timeLeft = 20;
-  scoreDisplay.textContent = '0';
-  timerDisplay.textContent = '20';
-  timerRing.classList.remove('warning');
-  tapButton.disabled = true;      // disabled until game starts
-  
-  // Buttons: start visible, play again hidden
-  startButton.classList.remove('hidden');
-  playAgainButton.classList.add('hidden');
-  
-  // Show best score
-  bestDisplay.textContent = bestScore;
-  
-  // Preload any vibration? not needed
-})();
+// ===== Sync with Server =====
+async function syncWithServer() {
+    if (!GAME_STATE.userId) return;
+    
+    try {
+        // Ithu un backend API endpoint
+        await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userId: GAME_STATE.userId,
+                balance: GAME_STATE.balance,
+                energy: GAME_STATE.energy,
+                initData: tg?.initData
+            })
+        });
+    } catch (err) {
+        console.error('Sync failed:', err);
+    }
+}
 
-// --- Extra: prevent accidental zoom / double-tap zoom on the button area ---
-document.addEventListener('touchstart', (e) => {
-  if (e.target.closest('.tap-btn') || e.target.closest('.btn')) {
-    // it's fine; we prevent default on buttons individually
-  }
-}, { passive: true });
+// Sync every 30 seconds
+setInterval(syncWithServer, 30000);
 
-// Avoid context menu on long press for a cleaner game feel
-document.querySelectorAll('button').forEach(btn => {
-  btn.addEventListener('contextmenu', (e) => e.preventDefault());
+// Sync on close
+window.addEventListener('beforeunload', () => {
+    saveState();
+    syncWithServer();
 });
+
+// ===== Init =====
+loadState();
+initUser();
+updateUI();
