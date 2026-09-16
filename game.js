@@ -18,6 +18,7 @@ const tapButton = document.getElementById('tapButton');
 const startButton = document.getElementById('startButton');
 const playAgainButton = document.getElementById('playAgainButton');
 const timerRing = document.querySelector('.timer-ring');
+const telegramUser = tg.initDataUnsafe?.user;
 
 // --- Best score from localStorage ---
 let bestScore = 0;
