@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Tap Challenge · 20s</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="game-container">
+    <div class="header">
+      <h1>⚡ TAP CHALLENGE ⚡</h1>
+      <p class="subtitle">20 seconds · how fast can you tap?</p>
+    </div>
+
+    <div class="score-panel">
+      <div class="score-item">
+        <span class="score-label">SCORE</span>
+        <span id="scoreDisplay" class="score-value">0</span>
+      </div>
+      <div class="score-item">
+        <span class="score-label">BEST</span>
+        <span id="bestDisplay" class="score-value best">0</span>
+      </div>
+    </div>
+
+    <div class="timer-section">
+      <div class="timer-ring">
+        <span id="timerDisplay">20</span>
+      </div>
+      <div class="timer-label">SECONDS LEFT</div>
+    </div>
+
+    <button id="tapButton" class="tap-btn" aria-label="Tap to score">TAP</button>
+
+    <div class="action-buttons">
+      <button id="startButton" class="btn start-btn">START GAME</button>
+      <button id="playAgainButton" class="btn again-btn hidden">PLAY AGAIN</button>
+    </div>
+
+    <div class="footer-note">
+      <span>🎯 tap as fast as you can</span>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>

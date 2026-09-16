@@ -1,0 +1,58 @@
+========================================
+  TAP CHALLENGE — 20 SECOND GAME
+========================================
+
+A simple, fast, and colorful Telegram Mini App game.
+Test your tapping speed in 20 seconds!
+
+------------------------------------------------
+HOW TO PLAY
+------------------------------------------------
+1. Open index.html in any modern browser (Chrome, Firefox, Safari).
+2. Tap the big orange "TAP" button as many times as you can.
+3. You have exactly 20 seconds.
+4. Your current score is shown live.
+5. Your BEST score is saved on your device (localStorage).
+6. Press "START GAME" to begin.
+7. After time runs out, press "PLAY AGAIN" to try to beat your record.
+
+------------------------------------------------
+FEATURES
+------------------------------------------------
+- 20-second countdown timer with visual warning when time is low.
+- Large, thumb-friendly TAP button.
+- Real-time score & best score display.
+- Best score persists between sessions (localStorage).
+- Fully mobile-friendly and responsive.
+- No external libraries, no backend, no internet required.
+
+------------------------------------------------
+FILES
+------------------------------------------------
+- index.html   → Main HTML structure
+- style.css    → All styling, modern & colorful
+- game.js      → Game logic and interactivity
+- README.txt   → This file
+
+------------------------------------------------
+HOW TO RUN
+------------------------------------------------
+Just place all 4 files in the same folder and open index.html
+in a browser. On Android, you can use any file manager or
+host it locally. It works offline.
+
+For Telegram Mini App: host these files on any static hosting
+(GitHub Pages, Netlify, etc.) and set the URL in BotFather.
+
+------------------------------------------------
+TECH NOTES
+------------------------------------------------
+- Uses localStorage to save best score (key: "tapChallengeBest").
+- Vibration API used for haptic feedback (if supported).
+- Tap button is disabled when game is not active.
+- Responsive down to 320px width.
+- No frameworks, no dependencies.
+
+------------------------------------------------
+Enjoy and tap fast! ⚡
+========================================
