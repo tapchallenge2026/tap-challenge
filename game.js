@@ -1,3 +1,7 @@
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+
 // game.js — Tap Challenge (20s)
 
 // --- Game state ---
